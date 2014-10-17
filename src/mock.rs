@@ -72,3 +72,61 @@ impl NetworkConnector for MockStream {
         Ok(MockStream::new())
     }
 }
+
+/// new connectors must be created if you wish to intercept requests.
+macro_rules! mock_connector (
+    ($name:ident {
+        $($url:expr => $res:expr)*
+    }) => (
+        struct $name {
+            rcvr: ::std::io::MemWriter,
+            res: ::std::io::BufReader<'static>,
+        }
+
+        impl Clone for $name {
+            fn clone(&self) -> $name {
+                panic!("cant clone BufReader")
+            }
+        }
+
+        impl ::net::NetworkStream for $name {
+            fn peer_name(&mut self) -> ::std::io::IoResult<::std::io::net::ip::SocketAddr> {
+                Ok(from_str("127.0.0.1:1337").unwrap())
+            }
+        }
+
+        impl ::net::NetworkConnector for $name {
+            fn connect<To: ::std::io::net::ip::ToSocketAddr>(addr: To, scheme: &str) -> ::std::io::IoResult<$name> {
+                use std::collections::HashMap;
+                let addr = addr.to_socket_addr().unwrap();
+                debug!("MockStream::connect({}, {})", addr, scheme);
+                let mut map = HashMap::new();
+                $(map.insert($url, $res);)*
+
+
+                let key = format!("{}://{}", scheme, addr.ip);
+                // ignore port for now
+                match map.find(&key[]) {
+                    Some(res) => Ok($name {
+                        rcvr: ::std::io::MemWriter::new(),
+                        res: ::std::io::BufReader::new(res.as_bytes())
+                    }),
+                    None => panic!("mock stream doesn't know url")
+                }
+            }
+
+        }
+
+        impl Reader for $name {
+            fn read(&mut self, buf: &mut [u8]) -> ::std::io::IoResult<uint> {
+                self.res.read(buf)
+            }
+        }
+
+        impl Writer for $name {
+            fn write(&mut self, msg: &[u8]) -> ::std::io::IoResult<()> {
+                self.rcvr.write(msg)
+            }
+        }
+    )
+)

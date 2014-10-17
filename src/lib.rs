@@ -181,6 +181,10 @@ macro_rules! inspect(
     })
 )
 
+#[cfg(test)]
+#[macro_escape]
+mod mock;
+
 pub mod client;
 pub mod method;
 pub mod header;
@@ -191,7 +195,6 @@ pub mod status;
 pub mod uri;
 pub mod version;
 
-#[cfg(test)] mod mock;
 
 mod mimewrapper {
     /// Re-exporting the mime crate, for convenience.
@@ -208,7 +211,7 @@ pub enum HttpError {
     /// An invalid `Method`, such as `GE,T`.
     HttpMethodError,
     /// An invalid `RequestUri`, such as `exam ple.domain`.
-    HttpUriError,
+    HttpUriError(url::ParseError),
     /// An invalid `HttpVersion`, such as `HTP/1.1`
     HttpVersionError,
     /// An invalid `Header`.
@@ -223,7 +226,7 @@ impl Error for HttpError {
     fn description(&self) -> &str {
         match *self {
             HttpMethodError => "Invalid Method specified",
-            HttpUriError => "Invalid Request URI specified",
+            HttpUriError(_) => "Invalid Request URI specified",
             HttpVersionError => "Invalid HTTP version specified",
             HttpHeaderError => "Invalid Header provided",
             HttpStatusError => "Invalid Status provided",
@@ -234,6 +237,7 @@ impl Error for HttpError {
     fn cause(&self) -> Option<&Error> {
         match *self {
             HttpIoError(ref error) => Some(error as &Error),
+            HttpUriError(ref error) => Some(error as &Error),
             _ => None,
         }
     }
@@ -242,6 +246,12 @@ impl Error for HttpError {
 impl FromError<IoError> for HttpError {
     fn from_error(err: IoError) -> HttpError {
         HttpIoError(err)
+    }
+}
+
+impl FromError<url::ParseError> for HttpError {
+    fn from_error(err: url::ParseError) -> HttpError {
+        HttpUriError(err)
     }
 }
 
