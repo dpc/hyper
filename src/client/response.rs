@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn test_unwrap() {
         let res = Response {
-            status: status::StatusCode::Ok,
+            status: status::Ok,
             headers: Headers::new(),
             version: version::HttpVersion::Http11,
             body: EofReader(BufferedReader::new(box MockStream::new() as Box<NetworkStream + Send>)),

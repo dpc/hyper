@@ -58,7 +58,7 @@ impl<'a> Response<'a, Fresh> {
     /// Creates a new Response that can be used to write to a network stream.
     pub fn new(stream: &'a mut (Writer + 'a)) -> Response<'a, Fresh> {
         Response {
-            status: status::StatusCode::Ok,
+            status: status::Ok,
             version: version::HttpVersion::Http11,
             headers: header::Headers::new(),
             body: ThroughWriter(stream)
